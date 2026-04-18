@@ -249,19 +249,52 @@ class CloudAnalyzer:
 
     def stop(self): self._running = False
 
+# --- Persistence Helper ---
+def save_session(ssid, is_demo):
+    try:
+        with open("session_cloud.json", "w") as f:
+            json.dump({"ssid": ssid, "is_demo": is_demo}, f)
+    except: pass
+
+def load_session():
+    try:
+        if os.path.exists("session_cloud.json"):
+            with open("session_cloud.json", "r") as f:
+                return json.load(f)
+    except: pass
+    return None
+
 @sio.event
 async def connect(sid, environ):
-    global is_broker_connected
+    global is_broker_connected, analyzer
+    logger.info(f"🌐 Site conectado: {sid}")
+    
+    # 1. Avisa que o servidor está Online
     await sio.emit("server_status", {"status": "ONLINE", "type": "CLOUD"}, to=sid)
+    
+    # 2. Se já estiver logado na Quotex, avisa o novo cliente
     if is_broker_connected:
         await sio.emit("broker_status", {"connected": True}, to=sid)
         await sio.emit("ssid_status", {"status": "CONNECTED", "message": "Nuvem Operacional!"}, to=sid)
+        
+        # 3. CRÍTICO: Se a IA já estiver analisando, avisa o site para mudar o texto de "DESLIGADA"
+        if analyzer and analyzer._running:
+            await sio.emit("robot_state", {
+                "state": "ANALYZING", 
+                "message": "Nuvem já estava operando!",
+                "timeframe": analyzer.timeframe
+            }, to=sid)
+            logger.debug(f"📤 Sincronizado status ATIVO para o cliente {sid}")
 
 @sio.on('set_ssid')
 async def on_set_ssid(sid, data):
     global quotex_client, is_broker_connected
     ssid, is_demo = data.get("ssid"), data.get("is_demo", True)
     if not ssid: return
+    
+    # Salva para caso o servidor reinicie
+    save_session(ssid, is_demo)
+    
     try:
         if quotex_client: await quotex_client.disconnect()
         quotex_client = AsyncQuotexClient(ssid=ssid, is_demo=is_demo)
@@ -270,6 +303,23 @@ async def on_set_ssid(sid, data):
             await sio.emit("ssid_status", {"status": "CONNECTED", "message": "Nuvem Conectada!"})
             await sio.emit("broker_status", {"connected": True})
     except Exception as e: logger.error(f"Erro: {e}")
+
+# Autoreconnect on startup
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(try_reconnect())
+
+async def try_reconnect():
+    global quotex_client, is_broker_connected
+    session = load_session()
+    if session:
+        logger.info("reconnecting to previous session...")
+        try:
+            quotex_client = AsyncQuotexClient(ssid=session['ssid'], is_demo=session['is_demo'])
+            if await quotex_client.connect():
+                is_broker_connected = True
+                logger.success("✅ Autoreconnect Cloud executado com sucesso!")
+        except: pass
 
 @sio.on('toggle_ai')
 async def on_toggle_ai(sid, data):
