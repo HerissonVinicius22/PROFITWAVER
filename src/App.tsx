@@ -152,7 +152,18 @@ export default function App() {
   };
 
 
-  // Audio context for sci-fi sounds (Disabled as requested)
+  useEffect(() => {
+    // SECURITY/CLEANUP: If we are on Vercel and the bridge URL is local or empty, force Render URL
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      const current = localStorage.getItem('profitwave_bridge_url');
+      if (!current || current.includes('localhost') || current.includes('127.0.0.1')) {
+        console.log("Forcing Render Cloud URL for production environment...");
+        setCustomBridgeUrl('https://profitwaver.onrender.com');
+        localStorage.setItem('profitwave_bridge_url', 'https://profitwaver.onrender.com');
+        setServerType('CLOUD');
+      }
+    }
+  }, []);
   const playSound = (freq: number, duration: number) => {
     // Sound disabled by user request
   };
@@ -751,7 +762,10 @@ export default function App() {
               onClick={() => {
                 if (!isBridgeConnected) {
                   setSsidStatus('ERROR');
-                  setSsidMessage('Inicie a ponte primeiro (python quotex_bridge.py)');
+                  const msg = serverType === 'CLOUD' 
+                    ? 'Ponte Nuvem desconectada. Verifique o link do Render nas configurações.'
+                    : 'Inicie a ponte primeiro (python quotex_bridge.py)';
+                  setSsidMessage(msg);
                   return;
                 }
                 if (isCapturing) return;
