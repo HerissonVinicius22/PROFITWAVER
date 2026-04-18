@@ -1,0 +1,22 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Sessions e cache da Quotex (dados privados)
+sessions/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs de debug
+profitwave_debug.log
+log-*.txt
+
+# Arquivos de teste temporários
+test_import.py
+scratch/
