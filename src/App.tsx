@@ -16,8 +16,6 @@ import {
   CircuitBoard,
   Shield,
   Radio,
-  Wifi,
-  WifiOff,
   Loader2,
   Globe,
   CheckCircle,
@@ -91,7 +89,6 @@ export default function App() {
   const [expirationCountdown, setExpirationCountdown] = useState(0);
   const [pendingSignalType, setPendingSignalType] = useState<SignalType | null>(null);
   const [analysisCountdown, setAnalysisCountdown] = useState(0);
-  const [statusMessage, setStatusMessage] = useState('');
   const [lastSignal, setLastSignal] = useState<{ 
     type: SignalType; 
     pair: string; 
@@ -164,7 +161,7 @@ export default function App() {
       }
     }
   }, []);
-  const playSound = (freq: number, duration: number) => {
+  const playSound = (_freq?: number, _duration?: number) => {
     // Sound disabled by user request
   };
 
@@ -237,7 +234,7 @@ export default function App() {
         setCurrentAsset({ pair: asset, payout: 87 }); // Default payout for now
       }
 
-      if (message) setStatusMessage(message);
+      if (message) console.log("Robot message:", message);
       if (next_scan_in !== undefined) setAnalysisCountdown(next_scan_in);
       
       // Sincronizar expiração globalmente se enviada
