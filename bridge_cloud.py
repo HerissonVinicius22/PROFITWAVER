@@ -13,6 +13,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 import pandas as pd
 import numpy as np
+from collections import deque
+
+# --- Diagnostic Logs ---
+log_buffer = deque(maxlen=100)
+def log_sink(message):
+    log_buffer.append(message)
+
+logger.add(log_sink)
 
 # --- Mock Playwright (To avoid Render build errors) ---
 class MockPlaywright:
@@ -69,6 +77,10 @@ sio = socketio.AsyncServer(
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 socket_app = socketio.ASGIApp(sio, app)
+
+@app.get("/debug-logs")
+async def get_debug_logs():
+    return "\n".join(list(log_buffer))
 
 # --- Global State ---
 quotex_client: Optional[AsyncQuotexClient] = None
