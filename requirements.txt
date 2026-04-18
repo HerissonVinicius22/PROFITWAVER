@@ -1,8 +1,4 @@
 requests
-beautifulsoup4
-cloudscraper
-pandas
-numpy
 python-socketio[asyncio]
 fastapi
 uvicorn
