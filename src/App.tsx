@@ -137,7 +137,11 @@ export default function App() {
 
   useEffect(() => {
     // Initialize Socket.IO connection
-    socketRef.current = io('http://127.0.0.1:5001', {
+    // URL configurável via variável de ambiente (VITE_BRIDGE_URL)
+    // No Vercel: defina VITE_BRIDGE_URL com a URL pública do seu backend (ex: ngrok)
+    // Localmente: usa http://127.0.0.1:5001 por padrão
+    const BRIDGE_URL = import.meta.env.VITE_BRIDGE_URL || 'http://127.0.0.1:5001';
+    socketRef.current = io(BRIDGE_URL, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 10,
       timeout: 10000
