@@ -114,10 +114,10 @@ export default function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [timeframe, setTimeframe] = useState<1 | 5>(1);
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [customBridgeUrl, setCustomBridgeUrl] = useState<string>(() => {
-    return localStorage.getItem('profitwave_bridge_url') || '';
+  const [manualSsid, setManualSsid] = useState<string>(() => {
+    return localStorage.getItem('profitwave_manual_ssid') || '';
   });
+  const [serverType, setServerType] = useState<'LOCAL' | 'CLOUD'>('LOCAL');
   
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
@@ -158,6 +158,10 @@ export default function App() {
     socketRef.current.on('connect', () => {
       console.log('--- BRIDGE CONNECTED ---');
       setIsBridgeConnected(true);
+    });
+
+    socketRef.current.on('server_status', (data: { status: string; type: 'LOCAL' | 'CLOUD' }) => {
+      setServerType(data.type);
     });
 
     socketRef.current.on('connect_error', (err: Error) => {
@@ -308,8 +312,12 @@ export default function App() {
     const interval = setInterval(fetchHistory, 30000);
     return () => clearInterval(interval);
   }, []);
-
-
+  const connectViaSsid = () => {
+    if (socketRef.current && manualSsid) {
+      setIsCapturing(true);
+      socketRef.current.emit('set_ssid', { ssid: manualSsid, is_demo: true });
+    }
+  };
 
 
   return (
@@ -841,13 +849,48 @@ export default function App() {
                   </p>
                 </div>
 
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">Conexão via SSID (Nuvem)</label>
+                  <div className="relative">
+                    <textarea 
+                      value={manualSsid}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setManualSsid(val);
+                        localStorage.setItem('profitwave_manual_ssid', val);
+                      }}
+                      placeholder='Cole aqui o código SSID (começa com 42["authorization"...)'
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] text-white font-mono placeholder:text-slate-700 focus:outline-none focus:border-cyan-400/50 transition-colors h-24 resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={connectViaSsid}
+                      disabled={!manualSsid || !isBridgeConnected}
+                      className="flex-1 py-3 bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-cyan-500/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      Conectar via SSID
+                    </button>
+                    <a 
+                      href="/CAPTURE_SSID.txt" 
+                      target="_blank"
+                      className="px-4 py-3 bg-white/5 border border-white/10 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all flex items-center justify-center"
+                    >
+                      Como Pegar?
+                    </a>
+                  </div>
+                  <p className="text-[9px] text-slate-600 leading-relaxed">
+                    Use esta opção se o robô estiver hospedado no Render/Railway.
+                  </p>
+                </div>
+
                 <div className="bg-lime-400/5 border border-lime-400/10 rounded-xl p-4">
-                  <h4 className="text-[10px] font-black text-lime-400 uppercase tracking-widest mb-2">Como conectar via Vercel:</h4>
+                  <h4 className="text-[10px] font-black text-lime-400 uppercase tracking-widest mb-2">Instruções de Deploy:</h4>
                   <ol className="text-[9px] text-slate-400 space-y-2 list-decimal ml-3">
-                    <li>Roda o script <code className="text-lime-400">INICIAR_PONTE.bat</code> no seu PC.</li>
-                    <li>Roda o script <code className="text-lime-400">INICIAR_NGROK.bat</code>.</li>
-                    <li>Copie a <code className="text-white font-bold">URL PÚBLICA</code> que aparecer no terminal.</li>
-                    <li>Cole no campo acima desta janela.</li>
+                    <li>Suba o código atualizado no seu <code className="text-white font-bold">GitHub</code>.</li>
+                    <li>No <code className="text-lime-400">Render.com</code>, crie um "New Web Service".</li>
+                    <li>Conecte seu repositório e use o <code className="text-white font-bold">bridge_cloud.py</code>.</li>
+                    <li>Copie a URL do Render e cole no campo "URL da Ponte" acima.</li>
                   </ol>
                 </div>
               </div>

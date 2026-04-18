@@ -1,0 +1,20 @@
+# 🔑 Como Capturar o SSID para o seu Robô Hospedado
+
+Para o seu robô rodar na nuvem, você precisa informar a ele a sua "chave de acesso" (SSID). Siga os passos:
+
+### 1. Crie o "Botão de Captura" (Favorito)
+1. Abra o seu navegador (Chrome ou outro).
+2. Pressione `CTRL + D` para criar um favorito (pode colocar qualquer nome, ex: "Pegar SSID").
+3. Clique em **"Mais"** ou **"Editar"**.
+4. No campo **URL**, apague tudo e cole o código abaixo EXATAMENTE como está:
+
+javascript:(function(){const ssid=localStorage.getItem("session")||document.cookie.split("; ").find(row=>row.startsWith("session=")).split("=")[1];if(ssid){const full='42["authorization",{"session":"'+ssid+'","isDemo":'+(window.location.href.includes("demo")?1:0)+',"tournamentId":0}]';prompt("Copie o seu SSID abaixo:", full)}else{alert("Sessão não encontrada. Certifique-se que está logado na Quotex!")}})();
+
+### 2. Como usar:
+1. Entre no site da Quotex e faça o login.
+2. Com a página da Quotex aberta, clique no favorito que você criou ("Pegar SSID").
+3. Uma janelinha vai abrir com o código. **Copie esse código.**
+4. Vá no seu site do ProfitWave (Vercel) e cole esse código no campo **"Manual SSID"** nas configurações.
+
+---
+⚠️ **Importante**: Nunca compartilhe esse código com ninguém, ele dá acesso à sua conta da corretora.
