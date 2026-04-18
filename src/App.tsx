@@ -744,6 +744,12 @@ export default function App() {
                   return;
                 }
                 if (isCapturing) return;
+
+                if (serverType === 'CLOUD') {
+                  setIsSettingsOpen(true);
+                  return;
+                }
+
                 setSsidStatus('LAUNCHING');
                 setSsidMessage('Abrindo navegador...');
                 setIsCapturing(true);
@@ -756,13 +762,17 @@ export default function App() {
                   ? 'bg-lime-400/10 border border-lime-400/30 text-lime-400 cursor-default'
                   : isCapturing
                     ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 cursor-wait'
-                    : 'bg-white/5 border border-white/10 text-white hover:bg-lime-400/10 hover:border-lime-400/30 hover:text-lime-400'
+                    : serverType === 'CLOUD'
+                      ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
+                      : 'bg-white/5 border border-white/10 text-white hover:bg-lime-400/10 hover:border-lime-400/30 hover:text-lime-400'
               }`}
             >
               {isBrokerConnected ? (
                 <><CheckCircle className="w-3.5 h-3.5" /> Conectado</>
               ) : isCapturing ? (
                 <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Capturando...</>
+              ) : serverType === 'CLOUD' ? (
+                <><Settings className="w-3.5 h-3.5 text-cyan-400" /> Configurar SSID (Nuvem)</>
               ) : (
                 <><Globe className="w-3.5 h-3.5 text-lime-400" /> Conectar Quotex</>
               )}
