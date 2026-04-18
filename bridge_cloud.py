@@ -16,21 +16,26 @@ SUPABASE_URL = "https://vzcixhgdvbnsumtxufto.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2l4aGdkdmJuc3VtdHh1ZnRvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQ2Njk2MCwiZXhwIjoyMDkyMDQyOTYwfQ.yC1sI6-3bairrP1savk-yH8Q_p7d5woeYlaG_KZQNcI"
 
 # --- Path Management for Cloud ---
-# Ensure local directory is in path for api_quotex library
 sys.path.append(os.getcwd())
 
+AsyncQuotexClient = None
+
 try:
-    from api_quotex import AsyncQuotexClient
-    logger.success("✅ API Quotex carregada com sucesso!")
-except ImportError as e:
-    logger.error(f"❌ Erro: Não encontrei a biblioteca 'api_quotex'. Detalhes: {e}")
-    # Fallback for manual GitHub folder structure
-    sys.path.append(os.path.join(os.getcwd(), "API-Quotex-main", "API-Quotex-main"))
+    from api_quotex.client import AsyncQuotexClient
+    logger.success("✅ API Quotex carregada via api_quotex.client!")
+except ImportError:
     try:
         from api_quotex import AsyncQuotexClient
-        logger.success("✅ API Quotex carregada do subdiretório!")
-    except ImportError:
-        logger.error("❌ Erro Crítico: api_quotex não encontrada em lugar nenhum!")
+        logger.success("✅ API Quotex carregada via api_quotex raiz!")
+    except ImportError as e:
+        logger.error(f"❌ Erro Crítico: Não foi possível importar AsyncQuotexClient. {e}")
+        # Try one last resort for the nested folder structure
+        sys.path.append(os.path.join(os.getcwd(), "API-Quotex-main", "API-Quotex-main"))
+        try:
+            from api_quotex.client import AsyncQuotexClient
+            logger.success("✅ API Quotex carregada via fallback de subdiretório!")
+        except ImportError:
+            logger.critical("🆘 Falha total ao carregar a biblioteca. O servidor não funcionará corretamente.")
 
 # --- Config ---
 HOST = "0.0.0.0"
