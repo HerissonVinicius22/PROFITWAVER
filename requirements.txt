@@ -3,3 +3,7 @@ python-socketio[asyncio]
 fastapi
 uvicorn
 loguru
+python-dotenv
+cloudscraper
+beautifulsoup4
+websockets

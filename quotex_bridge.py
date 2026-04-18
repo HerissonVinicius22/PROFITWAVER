@@ -566,18 +566,11 @@ class MarketAnalyzer:
             logger.error(f"Error checking result: {e}")
 
     def calculate_next_scan_in(self, now_dt):
-        second = now_dt.second
-        if self.timeframe == 1:
-            return (45 - second) if second < 45 else (105 - second)
-        else:
-            # M5 trigger happens at minute % 5 == 4 and second == 0
-            current_min_mod = now_dt.minute % 5
-            if current_min_mod == 4 and second == 0:
-                return 0
-            elif current_min_mod == 4 and second > 0:
-                return 4 * 60 + (60 - second)
-            else:
-                return (3 - current_min_mod) * 60 + (60 - second)
+        s = now_dt.second
+        if self.timeframe == 1: return (45 - s) if s < 45 else (105 - s)
+        m_mod = now_dt.minute % 5
+        if m_mod == 4 and s == 0: return 0
+        return (3 - m_mod) * 60 + (60 - s) if m_mod < 4 else (299 + (60-s))
 
     async def analyze(self):
         """High-precision dispatcher loop (1s resolution)."""

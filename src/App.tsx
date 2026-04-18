@@ -322,6 +322,21 @@ export default function App() {
   }, [expirationCountdown]);
 
   useEffect(() => {
+    if (isActive && analysisCountdown > 0) {
+      const timer = setInterval(() => {
+        setAnalysisCountdown(c => {
+          if (c <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return c - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [analysisCountdown, isActive]);
+
+  useEffect(() => {
     if (socketRef.current) {
       socketRef.current.emit('toggle_ai', { active: isActive });
     }
