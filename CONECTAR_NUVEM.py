@@ -9,7 +9,7 @@ from loguru import logger
 # Add local directory to path to find api_quotex package
 sys.path.append(os.getcwd())
 try:
-    from api_quotex.login import Login
+    from api_quotex.login import get_ssid
     logger.success("✅ Biblioteca API Quotex localizada!")
 except ImportError:
     logger.error("❌ Erro: api_quotex não encontrada. Rode este script na pasta do projeto.")
@@ -48,11 +48,9 @@ async def main():
 
     logger.info("🌐 Abrindo navegador para capturar SSID...")
     try:
-        # Use simple Login logic from api_quotex
-        login_helper = Login()
-        # This will open playwright, login, and return the session info
-        # Using the same logic from bridge but standalone
-        status, ssid = await login_helper.get_ssid(email, password)
+        # get_ssid is a standalone function in api_quotex.login
+        status, session_data = await get_ssid(email, password, is_demo=is_demo)
+        ssid = session_data.get("ssid") if session_data else None
         
         if not status or not ssid:
             logger.error("❌ Falha ao capturar SSID. Verifique suas credenciais.")
