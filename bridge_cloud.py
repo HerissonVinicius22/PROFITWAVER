@@ -23,12 +23,21 @@ AsyncQuotexClient = None
 try:
     from api_quotex.client import AsyncQuotexClient
     logger.success("✅ API Quotex carregada via api_quotex.client!")
-except ImportError:
+except ImportError as e:
+    logger.warning(f"⚠️ Falha no import inicial: {e}")
     try:
         from api_quotex import AsyncQuotexClient
         logger.success("✅ API Quotex carregada via api_quotex raiz!")
-    except ImportError as e:
-        logger.error(f"❌ Erro Crítico: Não foi possível importar AsyncQuotexClient. {e}")
+    except ImportError as e2:
+        logger.error(f"❌ Erro Crítico de Importação: {e2}")
+        # Debug: list directory
+        try:
+            logger.debug(f"Diretório atual: {os.getcwd()}")
+            logger.debug(f"Arquivos na raiz: {os.listdir('.')}")
+            if os.path.exists('api_quotex'):
+                logger.debug(f"Conteúdo de api_quotex: {os.listdir('api_quotex')}")
+        except: pass
+        
         # Try one last resort for the nested folder structure
         sys.path.append(os.path.join(os.getcwd(), "API-Quotex-main", "API-Quotex-main"))
         try:

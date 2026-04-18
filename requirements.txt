@@ -8,4 +8,5 @@ websockets==11.0.3
 requests==2.31.0
 beautifulsoup4==4.12.2
 cloudscraper==1.2.71
-# Playwright is NOT needed for the cloud bridge
+playwright==1.40.0
+# Playwright is included for import compatibility even if not used for login in cloud
