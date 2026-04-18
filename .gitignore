@@ -12,6 +12,7 @@ sessions/
 __pycache__/
 *.pyc
 *.pyo
+config_nuvem.json
 
 # Logs de debug
 profitwave_debug.log
