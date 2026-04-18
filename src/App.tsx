@@ -116,12 +116,23 @@ export default function App() {
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [customBridgeUrl, setCustomBridgeUrl] = useState<string>(() => {
-    return localStorage.getItem('profitwave_bridge_url') || '';
+    const saved = localStorage.getItem('profitwave_bridge_url');
+    if (saved) return saved;
+    // Default to Render URL if we are likely using the cloud version
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      return 'https://profitwaver.onrender.com';
+    }
+    return '';
   });
   const [manualSsid, setManualSsid] = useState<string>(() => {
     return localStorage.getItem('profitwave_manual_ssid') || '';
   });
-  const [serverType, setServerType] = useState<'LOCAL' | 'CLOUD'>('LOCAL');
+  const [serverType, setServerType] = useState<'LOCAL' | 'CLOUD'>(() => {
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
+      return 'CLOUD';
+    }
+    return 'LOCAL';
+  });
   
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
