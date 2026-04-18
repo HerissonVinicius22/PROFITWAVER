@@ -15,6 +15,16 @@ from loguru import logger
 SUPABASE_URL = "https://vzcixhgdvbnsumtxufto.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2l4aGdkdmJuc3VtdHh1ZnRvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQ2Njk2MCwiZXhwIjoyMDkyMDQyOTYwfQ.yC1sI6-3bairrP1savk-yH8Q_p7d5woeYlaG_KZQNcI"
 
+# --- Mock Playwright to avoid heavy dependencies on Cloud ---
+import sys
+from types import ModuleType
+mock_playwright = ModuleType("playwright")
+mock_playwright_async = ModuleType("playwright.async_api")
+mock_playwright_async.async_playwright = None
+mock_playwright_async.TimeoutError = Exception
+sys.modules["playwright"] = mock_playwright
+sys.modules["playwright.async_api"] = mock_playwright_async
+
 # --- Path Management for Cloud ---
 sys.path.append(os.getcwd())
 
