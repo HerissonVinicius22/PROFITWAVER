@@ -20,7 +20,7 @@ def log_sink(message):
     log_buffer.append(message.record["message"])
 logger.add(log_sink)
 
-# --- Mock Playwright (To avoid Render build errors) ---
+# --- Mock Playwright ---
 class MockPlaywright:
     async def __aenter__(self): return self
     async def __aexit__(self, *args): pass
@@ -93,22 +93,21 @@ class CloudAnalyzer:
 
     def stop(self): self._running = False
 
-# --- API & Socket.IO Setup ---
-app = FastAPI(title="ProfitWave Cloud Bridge")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+# --- FastAPI Setup ---
+fastapi_app = FastAPI(title="ProfitWave Cloud Bridge")
+fastapi_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', ping_timeout=60, ping_interval=25)
-sio_app = socketio.ASGIApp(sio, socketio_path='') # Usar raiz para retrocompatibilidade
-
-@app.get("/")
+@fastapi_app.get("/")
 async def root():
-    return {"status": "ONLINE", "bot": "ProfitWave Cloud v2", "timestamp": time.time()}
+    return {"status": "ONLINE", "bot": "ProfitWave Cloud v2.1", "timestamp": time.time(), "message": "PRONTO PARA OPERAR"}
 
-@app.get("/debug-logs")
+@fastapi_app.get("/debug-logs")
 async def get_debug_logs():
     return "\n".join(list(log_buffer))
 
-# --- Handlers ---
+# --- Socket.IO Setup ---
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', ping_timeout=60, ping_interval=25)
+
 @sio.event
 async def connect(sid, environ):
     global is_broker_connected, analyzer
@@ -128,7 +127,7 @@ async def on_set_ssid(sid, data):
         if await quotex_client.connect():
             is_broker_connected = True
             await sio.emit("broker_status", {"connected": True})
-            logger.success("✅ Quotex Conectada com Sucesso!")
+            logger.success("✅ Quotex Conectada!")
     except: pass
 
 @sio.on('toggle_ai')
@@ -143,8 +142,8 @@ async def on_toggle_ai(sid, data):
         analyzer.stop()
         await sio.emit("robot_state", {"state": "IDLE"})
 
-# Montar o Socket.IO na raiz do FastAPI
-app.mount("/", sio_app)
+# Criar a ponte final que une os dois
+app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
 
 if __name__ == "__main__":
     import uvicorn
