@@ -8,4 +8,6 @@ websockets==11.0.3
 requests==2.31.0
 beautifulsoup4==4.12.2
 cloudscraper==1.2.71
+pandas==2.1.3
+numpy==1.26.2
 # Playwright removed to avoid build errors. We will mock it in the bridge_cloud.py
