@@ -1,0 +1,13 @@
+# Ignorar arquivos do robô (Backend) no Vercel para acelerar o deploy do site
+requirements.txt
+bridge_cloud.py
+quotex_bridge.py
+api_quotex/
+CAPTURE_SSID.txt
+CONECTAR_NUVEM.py
+INICIAR_PONTE.bat
+config_nuvem.json
+profitwave_debug.log
+log-*.txt
+sessions/
+render.yaml
