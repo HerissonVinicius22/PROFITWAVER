@@ -10,6 +10,8 @@ from loguru import logger
 sys.path.append(os.getcwd())
 try:
     from api_quotex.login import get_ssid
+    # Add console sink back because api_quotex.login removes it
+    logger.add(sys.stderr, format="<green>{time:HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{message}</cyan>", colorize=True)
     logger.success("✅ Biblioteca API Quotex localizada!")
 except ImportError:
     logger.error("❌ Erro: api_quotex não encontrada. Rode este script na pasta do projeto.")
