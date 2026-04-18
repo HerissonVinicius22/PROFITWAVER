@@ -146,9 +146,9 @@ async def on_toggle_ai(sid, data):
         analyzer.stop()
         await sio.emit("robot_state", {"state": "IDLE"})
 
-# IMPORTANTE: Criar o app ASGI somente após registrar todas as rotas
-socket_app = socketio.ASGIApp(sio, app)
+# IMPORTANTE: A variável 'app' deve ser o socket_app final para o uvicorn identificar
+app = socketio.ASGIApp(sio, app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(socket_app, host=HOST, port=PORT)
+    uvicorn.run(app, host=HOST, port=PORT)
