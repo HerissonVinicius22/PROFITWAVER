@@ -116,8 +116,17 @@ class CloudAnalyzer:
 
 @sio.event
 async def connect(sid, environ):
+    global is_broker_connected
     logger.info(f"🌐 Site conectado: {sid}")
-    await sio.emit("server_status", {"status": "ONLINE", "type": "CLOUD"})
+    
+    # Send basic server status
+    await sio.emit("server_status", {"status": "ONLINE", "type": "CLOUD"}, to=sid)
+    
+    # IMPORTANT: Also send the current broker connection status to the new client
+    if is_broker_connected:
+        await sio.emit("ssid_status", {"status": "CONNECTED", "message": "Conectado à Quotex via Nuvem!"}, to=sid)
+        await sio.emit("broker_status", {"connected": True}, to=sid)
+        logger.debug(f"📤 Enviado status de conexão existente para o novo cliente: {sid}")
 
 @sio.on('set_ssid')
 async def on_set_ssid(sid, data):
