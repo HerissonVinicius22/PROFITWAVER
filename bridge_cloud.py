@@ -60,7 +60,12 @@ SUPABASE_HEADERS = {
 }
 
 # --- Socket.IO Setup ---
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(
+    async_mode='asgi', 
+    cors_allowed_origins='*',
+    ping_timeout=60,      # Aumentado para lidar com oscilações da rede
+    ping_interval=25
+)
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 socket_app = socketio.ASGIApp(sio, app)
@@ -304,10 +309,25 @@ async def on_set_ssid(sid, data):
             await sio.emit("broker_status", {"connected": True})
     except Exception as e: logger.error(f"Erro: {e}")
 
+# --- State Refresh Loop ---
+async def heartbeat_loop():
+    while True:
+        try:
+            global is_broker_connected, analyzer
+            # Mantém a conexão viva e sincronizada
+            await sio.emit("server_status", {"status": "ONLINE", "type": "CLOUD", "time": time.time()})
+            if is_broker_connected:
+                await sio.emit("broker_status", {"connected": True})
+                if analyzer and analyzer._running:
+                    await sio.emit("robot_state", {"state": "ANALYZING", "message": "Nuvem em Monitoramento Ativo"})
+        except: pass
+        await asyncio.sleep(15)
+
 # Autoreconnect on startup
 @app.on_event("startup")
 async def startup_event():
     asyncio.create_task(try_reconnect())
+    asyncio.create_task(heartbeat_loop())
 
 async def try_reconnect():
     global quotex_client, is_broker_connected
