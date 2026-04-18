@@ -3,9 +3,8 @@ import json
 import os
 import sys
 import time
-import urllib.request
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Optional
 from collections import deque
 
 import socketio
@@ -21,7 +20,7 @@ def log_sink(message):
     log_buffer.append(message.record["message"])
 logger.add(log_sink)
 
-# --- Mock Playwright ---
+# --- Mock Playwright (To avoid Render build errors) ---
 class MockPlaywright:
     async def __aenter__(self): return self
     async def __aexit__(self, *args): pass
@@ -49,9 +48,6 @@ except:
 HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", 8080))
 PAYOUT_THRESHOLD = 80
-SUPABASE_URL = "https://vzcixhgdvbnsumtxufto.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ6Y2l4aGdkdmJuc3VtdHh1ZnRvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImhhdCI6MTc3NjQ2Njk2MCwiZXhwIjoyMDkyMDQyOTYwfQ.yC1sI6-3bairrP1savk-yH8Q_p7d5woeYlaG_KZQNcI"
-SUPABASE_HEADERS = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 
 # --- Global State ---
 quotex_client: Optional[AsyncQuotexClient] = None
@@ -59,7 +55,7 @@ is_broker_connected = False
 analyzer = None
 analysis_task = None
 
-# --- Market Analyzer Class ---
+# --- Market Analyzer ---
 class CloudAnalyzer:
     def __init__(self, client: AsyncQuotexClient):
         self.client = client
@@ -68,8 +64,6 @@ class CloudAnalyzer:
         self.active_assets = []
         self._last_scan_time = 0
         self._scan_interval = 300
-        self._last_signals = {}
-        self.is_locking_signal = False
 
     async def update_active_assets(self):
         try:
@@ -78,12 +72,12 @@ class CloudAnalyzer:
             valid = [(a, p) for a, p in payouts.items() if p >= PAYOUT_THRESHOLD]
             valid.sort(key=lambda x: x[1], reverse=True)
             self.active_assets = [x[0] for x in valid[:15]]
-            logger.info(f"Scanner: {len(self.active_assets)} ativos.")
+            logger.info(f"Scanner Nuvem: {len(self.active_assets)} ativos encontrados.")
         except: pass
 
     async def analyze(self):
         self._running = True
-        logger.info("🧠 Cérebro Cloud: ON")
+        logger.info("🧠 Cérebro Cloud: OPERACIONAL")
         while self._running:
             try:
                 if not self.client.websocket_is_connected:
@@ -93,25 +87,28 @@ class CloudAnalyzer:
                     await self.update_active_assets()
                     self._last_scan_time = time.time()
 
-                await sio.emit("robot_state", {"state": "ANALYZING", "message": f"Monitorando {len(self.active_assets)} pares"})
+                await sio.emit("robot_state", {"state": "ANALYZING", "message": f"Nuvem Monitorando {len(self.active_assets)} pares"})
                 await asyncio.sleep(10)
             except: await asyncio.sleep(5)
 
     def stop(self): self._running = False
 
-# --- Socket.IO & FastAPI ---
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', ping_timeout=60, ping_interval=25)
-app = FastAPI()
+# --- API & Socket.IO Setup ---
+app = FastAPI(title="ProfitWave Cloud Bridge")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', ping_timeout=60, ping_interval=25)
+sio_app = socketio.ASGIApp(sio, socketio_path='') # Usar raiz para retrocompatibilidade
 
 @app.get("/")
 async def root():
-    return {"status": "ONLINE", "bot": "ProfitWave Cloud", "timestamp": time.time()}
+    return {"status": "ONLINE", "bot": "ProfitWave Cloud v2", "timestamp": time.time()}
 
 @app.get("/debug-logs")
 async def get_debug_logs():
     return "\n".join(list(log_buffer))
 
+# --- Handlers ---
 @sio.event
 async def connect(sid, environ):
     global is_broker_connected, analyzer
@@ -119,7 +116,7 @@ async def connect(sid, environ):
     if is_broker_connected:
         await sio.emit("broker_status", {"connected": True}, to=sid)
         if analyzer and analyzer._running:
-            await sio.emit("robot_state", {"state": "ANALYZING", "message": "IA em Monitoramento Ativo"}, to=sid)
+            await sio.emit("robot_state", {"state": "ANALYZING"}, to=sid)
 
 @sio.on('set_ssid')
 async def on_set_ssid(sid, data):
@@ -131,7 +128,7 @@ async def on_set_ssid(sid, data):
         if await quotex_client.connect():
             is_broker_connected = True
             await sio.emit("broker_status", {"connected": True})
-            logger.success("✅ Quotex Conectada!")
+            logger.success("✅ Quotex Conectada com Sucesso!")
     except: pass
 
 @sio.on('toggle_ai')
@@ -146,8 +143,8 @@ async def on_toggle_ai(sid, data):
         analyzer.stop()
         await sio.emit("robot_state", {"state": "IDLE"})
 
-# IMPORTANTE: A variável 'app' deve ser o socket_app final para o uvicorn identificar
-app = socketio.ASGIApp(sio, app)
+# Montar o Socket.IO na raiz do FastAPI
+app.mount("/", sio_app)
 
 if __name__ == "__main__":
     import uvicorn
