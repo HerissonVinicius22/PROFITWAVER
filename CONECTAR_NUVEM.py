@@ -48,39 +48,56 @@ async def main():
 
     logger.info("🌐 Abrindo navegador para capturar SSID...")
     try:
-        # get_ssid is a standalone function in api_quotex.login
-        status, session_data = await get_ssid(email, password, is_demo=is_demo)
+        status, session_data = await get_ssid(email, password) # Let it detect naturally
         ssid = session_data.get("ssid") if session_data else None
         
         if not status or not ssid:
             logger.error("❌ Falha ao capturar SSID. Verifique suas credenciais.")
             return
 
+        # Detect is_demo from the SSID string internal JSON
+        actual_is_demo = True
+        if '"isDemo":0' in ssid:
+            actual_is_demo = False
+            logger.info("💎 Conta REAL detectada.")
+        else:
+            logger.info("🧪 Conta DEMO detectada.")
+
         logger.success(f"🔑 SSID Capturado com sucesso!")
         
         # Now connect to Render
         sio = socketio.AsyncClient()
+        connection_finished = asyncio.Event()
         
         @sio.event
         async def connect():
             logger.success(f"📡 Conectado ao servidor Cloud: {render_url}")
-            # Send the SSID to the cloud bridge
             logger.info("📤 Enviando chave de acesso para a nuvem...")
-            await sio.emit('set_ssid', {"ssid": ssid, "is_demo": is_demo})
-            await asyncio.sleep(2) # Give it a moment
-            await sio.disconnect()
+            await sio.emit('set_ssid', {"ssid": ssid, "is_demo": actual_is_demo})
 
-        @sio.event
-        async def disconnect():
-            logger.info("🔌 Desconectado do servidor Cloud.")
+        @sio.on('ssid_status')
+        async def on_ssid_status(data):
+            status = data.get("status")
+            message = data.get("message")
+            if status == "CONNECTED":
+                logger.success(f"✅ SERVIDOR CONFIRMOU: {message}")
+                connection_finished.set()
+            elif status == "ERROR":
+                logger.error(f"❌ SERVIDOR REJEITOU: {message}")
+                connection_finished.set()
 
         try:
             await sio.connect(render_url, transports=['websocket', 'polling'])
-            await sio.wait()
-            logger.success("✅ Login concluído! Seu robô na nuvem já está operando.")
+            # Wait for specific server response or 30s timeout
+            try:
+                await asyncio.wait_for(connection_finished.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                logger.warning("⏳ Tempo esgotado esperando confirmação do servidor.")
+            
+            await sio.disconnect()
+            logger.success("✅ Processo finalizado.")
         except Exception as e:
             logger.error(f"❌ Erro ao conectar no Render: {e}")
-            logger.warning("Verifique se a URL do Render está correta e se o servidor está online.")
 
     except Exception as e:
         logger.exception(f"Erro inesperado: {e}")
