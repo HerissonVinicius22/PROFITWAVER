@@ -114,6 +114,10 @@ export default function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [timeframe, setTimeframe] = useState<1 | 5>(1);
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [customBridgeUrl, setCustomBridgeUrl] = useState<string>(() => {
+    return localStorage.getItem('profitwave_bridge_url') || '';
+  });
   const [manualSsid, setManualSsid] = useState<string>(() => {
     return localStorage.getItem('profitwave_manual_ssid') || '';
   });
