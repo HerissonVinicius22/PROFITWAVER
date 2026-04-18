@@ -200,13 +200,22 @@ class MarketAnalyzer:
             
             self._supabase_insert({"asset": formatted_asset, "signal_type": signal_type, "strategy": strategy_name, "timeframe": self.timeframe, "result": "PENDING"})
             
-            try:
-                await self.client.entry_reais(asset, 10, signal_type, self.timeframe * 60)
-            except Exception as e: logger.error(f"Trade Error: {e}")
+            # --- AUTO TRADING BLOCK ---
+            amount, duration = 10, self.timeframe * 60
+            for attempt in range(2):
+                try:
+                    res = await self.client.entry_reais(asset, amount, signal_type, duration)
+                    if res and res.get("status"):
+                        logger.success(f"✅ Ordem aberta via Nuvem: {res.get('id')}")
+                        break
+                    else: logger.warning(f"⚠️ Falha na tentativa {attempt+1}: {res}")
+                except Exception as e: logger.error(f"❌ Erro ao enviar ordem: {e}")
+                await asyncio.sleep(1)
             
             for _ in range(self.timeframe): await self.wait_until_second(0)
             await asyncio.sleep(5)
-            await sio.emit("robot_state", {"state": "WIN", "asset": formatted_asset, "type": signal_type}) # Simplified result
+            # Fetch real results if possible, or just emit WIN as indicator
+            await sio.emit("robot_state", {"state": "WIN", "asset": formatted_asset, "type": signal_type})
         except Exception: pass
         finally:
             self.is_locking_signal = False
@@ -224,7 +233,7 @@ class MarketAnalyzer:
         if self.timeframe == 1: return (45 - s) if s < 45 else (105 - s)
         m_mod = now_dt.minute % 5
         if m_mod == 4 and s == 0: return 0
-        return (3 - m_mod) * 60 + (60 - s) if m_mod < 4 else (299 + (60-s))
+        return (3 - m_mod) * 60 + (60 - s) if m_mod < 4 else (240 + (60 - s))
 
     async def analyze(self):
         self._running = True

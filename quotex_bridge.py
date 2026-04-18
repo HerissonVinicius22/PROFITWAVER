@@ -570,7 +570,7 @@ class MarketAnalyzer:
         if self.timeframe == 1: return (45 - s) if s < 45 else (105 - s)
         m_mod = now_dt.minute % 5
         if m_mod == 4 and s == 0: return 0
-        return (3 - m_mod) * 60 + (60 - s) if m_mod < 4 else (299 + (60-s))
+        return (3 - m_mod) * 60 + (60 - s) if m_mod < 4 else (240 + (60 - s))
 
     async def analyze(self):
         """High-precision dispatcher loop (1s resolution)."""

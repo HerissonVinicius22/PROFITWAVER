@@ -110,6 +110,19 @@ export default function App() {
   const [ssidMessage, setSsidMessage] = useState('');
   const [isCapturing, setIsCapturing] = useState(false);
   const [timeframe, setTimeframe] = useState<1 | 5>(1);
+  
+  // Cálculo local do próximo scan como fallback
+  const getCalculatedNextScan = () => {
+    const now = new Date();
+    const s = now.getSeconds();
+    if (timeframe === 1) {
+      return s < 45 ? 45 - s : 105 - s;
+    } else {
+      const m_mod = now.getMinutes() % 5;
+      if (m_mod === 4 && s === 0) return 0;
+      return m_mod < 4 ? (3 - m_mod) * 60 + (60 - s) : (240 + (60 - s));
+    }
+  };
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [customBridgeUrl, setCustomBridgeUrl] = useState<string>(() => {
@@ -319,30 +332,35 @@ export default function App() {
   }, [expirationCountdown]);
 
   useEffect(() => {
-    if (isActive && analysisCountdown > 0) {
+    if (isActive && robotState === 'ANALYZING') {
       const timer = setInterval(() => {
         setAnalysisCountdown(c => {
           if (c <= 1) {
-            clearInterval(timer);
-            return 0;
+            // Se chegou a zero localmente, recalcula o próximo ciclo imediatamente
+            // enquanto aguarda o sync do servidor
+            return getCalculatedNextScan();
           }
           return c - 1;
         });
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [analysisCountdown, isActive]);
+  }, [isActive, robotState, timeframe]);
 
   useEffect(() => {
     if (socketRef.current) {
-      socketRef.current.emit('toggle_ai', { active: isActive });
+      socketRef.current.emit('toggle_ai', { active: isActive, timeframe });
     }
     if (!isActive) {
       setRobotState('IDLE');
       setExpirationCountdown(0);
       setPreAlertCountdown(0);
+      setAnalysisCountdown(0);
+    } else {
+      // Começa com um cálculo local ao ativar para não ficar em 00:00
+      setAnalysisCountdown(getCalculatedNextScan());
     }
-  }, [isActive]);
+  }, [isActive, timeframe]);
 
   // Busca histórico do Supabase ao carregar e a cada 30s
   useEffect(() => {
@@ -548,9 +566,14 @@ export default function App() {
                     <div className="text-lime-400 font-black text-2xl tracking-tighter italic uppercase">
                       Próxima Análise {timeframe === 5 ? '[M5]' : '[M1]'}
                     </div>
-                    <div className="text-5xl font-mono text-white tracking-widest mt-3 font-black bg-lime-400/10 px-6 py-2 rounded-xl border border-lime-400/20 shadow-[0_0_20px_rgba(163,230,53,0.15)]">
+                    <div className={`text-5xl font-mono tracking-widest mt-3 font-black bg-white/5 px-6 py-2 rounded-xl border shadow-lg ${!isBrokerConnected ? 'text-amber-500 border-amber-500/20' : 'text-white border-lime-400/20'}`}>
                       {formatTime(analysisCountdown)}
                     </div>
+                    {!isBrokerConnected && (
+                      <div className="mt-2 text-[8px] text-amber-500/70 font-bold uppercase animate-pulse">
+                        Aguardando Conexão com Corretora...
+                      </div>
+                    )}
                     <div className="mt-4 text-[10px] text-slate-500 font-mono uppercase tracking-[0.3em] opacity-60">
                       Monitorando: {currentAsset.pair}
                     </div>
