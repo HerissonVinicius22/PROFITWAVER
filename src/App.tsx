@@ -21,7 +21,10 @@ import {
   Loader2,
   Globe,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Settings,
+  X,
+  Link as LinkIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -111,6 +114,10 @@ export default function App() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [timeframe, setTimeframe] = useState<1 | 5>(1);
   const [tradeHistory, setTradeHistory] = useState<TradeRecord[]>([]);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [customBridgeUrl, setCustomBridgeUrl] = useState<string>(() => {
+    return localStorage.getItem('profitwave_bridge_url') || '';
+  });
   
   const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
@@ -136,14 +143,15 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Initialize Socket.IO connection
-    // URL configurável via variável de ambiente (VITE_BRIDGE_URL)
-    // No Vercel: defina VITE_BRIDGE_URL com a URL pública do seu backend (ex: ngrok)
-    // Localmente: usa http://127.0.0.1:5001 por padrão
-    const BRIDGE_URL = import.meta.env.VITE_BRIDGE_URL || 'http://127.0.0.1:5001';
+    // URL configurável via variável de ambiente (VITE_BRIDGE_URL) ou campo customizado
+    // No Vercel: o usuário pode colar a URL do ngrok no modal de configurações
+    const BRIDGE_URL = customBridgeUrl || import.meta.env.VITE_BRIDGE_URL || 'http://127.0.0.1:5001';
+    
+    console.log(`Connecting to Bridge at: ${BRIDGE_URL}`);
+
     socketRef.current = io(BRIDGE_URL, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 5,
       timeout: 10000
     });
 
@@ -249,7 +257,7 @@ export default function App() {
         socketRef.current.disconnect();
       }
     };
-  }, [isActive]);
+  }, [isActive, customBridgeUrl]);
 
   // Countdown timers
   useEffect(() => {
@@ -350,6 +358,13 @@ export default function App() {
                 </span>
               </div>
             </div>
+            
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/10 group"
+            >
+              <Settings className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
+            </button>
           </div>
         </div>
       </header>
@@ -450,6 +465,16 @@ export default function App() {
                   </div>
                   
                   {/* Status Lights */}
+                  {!isBridgeConnected && (
+                    <motion.button 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      onClick={() => setIsSettingsOpen(true)}
+                      className="mt-4 px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-[10px] font-bold uppercase tracking-widest hover:bg-rose-500/20 transition-all flex items-center gap-2"
+                    >
+                      <LinkIcon className="w-3 h-3" /> Configurar Ponte (ngrok)
+                    </motion.button>
+                  )}
                   <div className="flex gap-1.5 mt-2">
                     {[1, 2, 3].map(i => (
                       <div key={i} className="w-1 h-1 rounded-full bg-slate-800" />
@@ -749,6 +774,96 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Connection Settings Modal */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-0">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSettingsOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-[#0d1117] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-lime-400/10 flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-lime-400" />
+                  </div>
+                  <h2 className="text-white font-black text-sm uppercase tracking-widest">Configurações</h2>
+                </div>
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4 text-slate-500" />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">URL da Ponte (ngrok ou Local)</label>
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      value={customBridgeUrl}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCustomBridgeUrl(val);
+                        localStorage.setItem('profitwave_bridge_url', val);
+                      }}
+                      placeholder="Ex: https://xxxx-xxx.ngrok-free.app"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono placeholder:text-slate-700 focus:outline-none focus:border-lime-400/50 transition-colors"
+                    />
+                    {customBridgeUrl && (
+                      <button 
+                        onClick={() => {
+                          setCustomBridgeUrl('');
+                          localStorage.removeItem('profitwave_bridge_url');
+                        }}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-rose-400 hover:text-rose-300 transition-colors"
+                      >
+                        LIMPAR
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[9px] text-slate-600 leading-relaxed">
+                    Deixe vazio para usar o padrão (localhost:5001). <br/>
+                    Se estiver no Vercel, cole aqui a URL do seu ngrok.
+                  </p>
+                </div>
+
+                <div className="bg-lime-400/5 border border-lime-400/10 rounded-xl p-4">
+                  <h4 className="text-[10px] font-black text-lime-400 uppercase tracking-widest mb-2">Como conectar via Vercel:</h4>
+                  <ol className="text-[9px] text-slate-400 space-y-2 list-decimal ml-3">
+                    <li>Roda o script <code className="text-lime-400">INICIAR_PONTE.bat</code> no seu PC.</li>
+                    <li>Roda o script <code className="text-lime-400">INICIAR_NGROK.bat</code>.</li>
+                    <li>Copie a <code className="text-white font-bold">URL PÚBLICA</code> que aparecer no terminal.</li>
+                    <li>Cole no campo acima desta janela.</li>
+                  </ol>
+                </div>
+              </div>
+              
+              <div className="p-6 bg-white/3">
+                <button 
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="w-full py-3 bg-lime-400 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:scale-[1.02] transition-all"
+                >
+                  Salvar e Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ===== HISTÓRICO SUPABASE ===== */}
       <div className="relative z-10 px-4 pb-6">
